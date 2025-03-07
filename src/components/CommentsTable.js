@@ -57,7 +57,7 @@ export default function CommentsTable({ comments }) {
           className="px-3 py-2 rounded bg-gray-800 text-white border border-gray-700"
         />
         <div>
-          <label className="mr-2">Rows per page:</label>
+          <label className="mr-2 ">Rows per page:</label>
           <select
             value={rowsPerPage}
             onChange={(e) => {

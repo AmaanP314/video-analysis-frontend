@@ -10,9 +10,7 @@ export default function Home() {
         For example, try accessing:
       </p>
       <div className="p-4 bg-white shadow rounded">
-        <code>
-          https://analyseyoutube.onrender.com/www.youtube.com/watch?v=YOUR_VIDEO_ID
-        </code>
+        <code>https://analyseyoutube.onrender.com/watch?v=YOUR_VIDEO_ID</code>
       </div>
       <div className="mt-8">
         <Link legacyBehavior href="/results">

@@ -5,17 +5,18 @@ import VideoResult from "../components/VideoResult";
 
 export default function ResultsPage() {
   const router = useRouter();
-  const { v } = router.query;
+  const { v } = router.query; // video id from query parameter
   const [data, setData] = useState(null);
   const [combinedComments, setCombinedComments] = useState([]);
   const [sentiRel, setSentiRel] = useState(null);
   const [sentiTime, setSentiTime] = useState(null);
+  const [topLimit, setTopLimit] = useState(10);
+  const [latestLimit, setLatestLimit] = useState(10);
   const [error, setError] = useState(null);
 
   // Fetch stored video data.
   useEffect(() => {
     if (!v) return;
-
     const fetchData = async () => {
       try {
         const response = await fetch(
@@ -28,52 +29,67 @@ export default function ResultsPage() {
         setError(err.message);
       }
     };
-
     fetchData();
   }, [v]);
 
-  // Fetch combined comments with individual sentiment labels for both types.
+  // Fetch comments sentiment for each type with its respective limit.
   useEffect(() => {
     if (!v) return;
 
-    const fetchCommentsSentiments = async (type) => {
+    const fetchTopComments = async () => {
       try {
         const res = await fetch(
-          `https://analyseyoutube.onrender.com/senti_comments?v=${v}&type=${type}`
+          `https://analyseyoutube.onrender.com/senti_comments?v=${v}&type=rel&limit=${topLimit}`
         );
         if (res.ok) {
           const json = await res.json();
           return json.comments;
         }
       } catch (err) {
-        console.error(`Sentiment (${type}) error:`, err);
+        console.error("Error fetching Top comments:", err);
+      }
+      return [];
+    };
+
+    const fetchLatestComments = async () => {
+      try {
+        const res = await fetch(
+          `https://analyseyoutube.onrender.com/senti_comments?v=${v}&type=time&limit=${latestLimit}`
+        );
+        if (res.ok) {
+          const json = await res.json();
+          return json.comments;
+        }
+      } catch (err) {
+        console.error("Error fetching Latest comments:", err);
       }
       return [];
     };
 
     const fetchBoth = async () => {
-      const relComments = await fetchCommentsSentiments("rel");
-      const timeComments = await fetchCommentsSentiments("time");
+      const topComments = await fetchTopComments();
+      const latestComments = await fetchLatestComments();
       const combined = [
-        ...relComments.map((item) => ({ ...item, type: "Top" })),
-        ...timeComments.map((item) => ({ ...item, type: "Latest" })),
+        ...topComments.map((item) => ({ ...item, type: "Top" })),
+        ...latestComments.map((item) => ({ ...item, type: "Latest" })),
       ];
       setCombinedComments(combined);
     };
 
     fetchBoth();
-  }, [v]);
+  }, [v, topLimit, latestLimit]);
 
+  // Fetch aggregated sentiment visualizations using combined comments.
   useEffect(() => {
     if (combinedComments.length === 0) return;
-
     const getVisualization = async (type, setter) => {
+      // Filter combined comments by type and extract sentiment labels.
       const filtered = combinedComments
         .filter((item) => item.type === (type === "Top" ? "Top" : "Latest"))
         .map((item) => item.sentiment);
       try {
         const res = await fetch(
-          "https://analyseyoutube.onrender.com/senti_visualization_from_labels",
+          "https://analyseyoutube.onrender.com/senti_visualization",
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -108,6 +124,7 @@ export default function ResultsPage() {
 
   return (
     <Layout>
+      {/* YouTube Iframe at the top */}
       <div className="w-full aspect-video mb-8">
         <iframe
           width="100%"
@@ -127,6 +144,37 @@ export default function ResultsPage() {
         sentiTime={sentiTime}
         combinedComments={combinedComments}
       />
+
+      <div className="flex justify-around mt-8">
+        <div>
+          <label className="mr-2">Top Comments Limit:</label>
+          <select
+            value={topLimit}
+            onChange={(e) => setTopLimit(parseInt(e.target.value))}
+            className="px-2 py-1 rounded bg-gray-800 text-white border border-gray-700"
+          >
+            {[10, 20, 40, 60, 80, 100].map((num) => (
+              <option key={num} value={num}>
+                {num}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="mr-2">Latest Comments Limit:</label>
+          <select
+            value={latestLimit}
+            onChange={(e) => setLatestLimit(parseInt(e.target.value))}
+            className="px-2 py-1 rounded bg-gray-800 text-white border border-gray-700"
+          >
+            {[10, 20, 40, 60, 80, 100].map((num) => (
+              <option key={num} value={num}>
+                {num}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
     </Layout>
   );
 }
