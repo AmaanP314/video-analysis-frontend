@@ -2,10 +2,11 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import Layout from "../components/Layout";
 import VideoResult from "../components/VideoResult";
+import Head from "next/head";
 
 export default function ResultsPage() {
   const router = useRouter();
-  const { v } = router.query; // video id from query parameter
+  const { v } = router.query;
   const [data, setData] = useState(null);
   const [combinedComments, setCombinedComments] = useState([]);
   const [sentiRel, setSentiRel] = useState(null);
@@ -13,20 +14,37 @@ export default function ResultsPage() {
   const [topLimit, setTopLimit] = useState(10);
   const [latestLimit, setLatestLimit] = useState(10);
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Fetch stored video data.
+  const fetchWithRetry = async (url, maxAttempts = 5, delay = 2000) => {
+    let attempts = 0;
+    while (attempts < maxAttempts) {
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Failed to fetch data");
+        return await response.json();
+      } catch (err) {
+        attempts++;
+        if (attempts >= maxAttempts) {
+          throw new Error("Failed to fetch data after multiple attempts");
+        }
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+  };
+
   useEffect(() => {
     if (!v) return;
     const fetchData = async () => {
       try {
-        const response = await fetch(
+        const json = await fetchWithRetry(
           `https://analyseyoutube.onrender.com/results?v=${v}`
         );
-        if (!response.ok) throw new Error("Failed to fetch video data");
-        const json = await response.json();
         setData(json);
+        setLoading(false);
       } catch (err) {
         setError(err.message);
+        setLoading(false);
       }
     };
     fetchData();
@@ -115,7 +133,8 @@ export default function ResultsPage() {
         <p className="text-red-500">{error}</p>
       </Layout>
     );
-  if (!data)
+  // if (!data)
+  if (loading)
     return (
       <Layout>
         <p>Loading video data...</p>
@@ -124,6 +143,9 @@ export default function ResultsPage() {
 
   return (
     <Layout>
+      <Head>
+        <title>{data["Title"] ? `${data["Title"]}` : "Video Analysis"}</title>
+      </Head>
       {/* YouTube Iframe at the top */}
       <div className="w-full aspect-video mb-8">
         <iframe
