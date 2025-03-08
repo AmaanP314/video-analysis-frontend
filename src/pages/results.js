@@ -16,7 +16,7 @@ export default function ResultsPage() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchWithRetry = async (url, maxAttempts = 5, delay = 2000) => {
+  const fetchWithRetry = async (url, maxAttempts = 5, delay = 500) => {
     let attempts = 0;
     while (attempts < maxAttempts) {
       try {
