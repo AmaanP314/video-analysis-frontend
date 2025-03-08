@@ -15,12 +15,18 @@ export default function ResultsPage() {
   const [latestLimit, setLatestLimit] = useState(10);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [processingComplete, setProcessingComplete] = useState(false);
 
-  const fetchWithRetry = async (url, maxAttempts = 5, delay = 500) => {
+  const fetchWithRetry = async (url, maxAttempts = 8, delay = 500) => {
     let attempts = 0;
     while (attempts < maxAttempts) {
       try {
         const response = await fetch(url);
+        if (response.status === 404) {
+          attempts++;
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          continue;
+        }
         if (!response.ok) throw new Error("Failed to fetch data");
         return await response.json();
       } catch (err) {
@@ -41,6 +47,7 @@ export default function ResultsPage() {
           `https://analyseyoutube.onrender.com/results?v=${v}`
         );
         setData(json);
+        setProcessingComplete(true);
         setLoading(false);
       } catch (err) {
         setError(err.message);
@@ -50,9 +57,8 @@ export default function ResultsPage() {
     fetchData();
   }, [v]);
 
-  // Fetch comments sentiment for each type with its respective limit.
   useEffect(() => {
-    if (!v) return;
+    if (!v || !processingComplete) return;
 
     const fetchTopComments = async () => {
       try {
@@ -95,13 +101,11 @@ export default function ResultsPage() {
     };
 
     fetchBoth();
-  }, [v, topLimit, latestLimit]);
+  }, [v, topLimit, latestLimit, processingComplete]);
 
-  // Fetch aggregated sentiment visualizations using combined comments.
   useEffect(() => {
     if (combinedComments.length === 0) return;
     const getVisualization = async (type, setter) => {
-      // Filter combined comments by type and extract sentiment labels.
       const filtered = combinedComments
         .filter((item) => item.type === (type === "Top" ? "Top" : "Latest"))
         .map((item) => item.sentiment);
@@ -133,18 +137,19 @@ export default function ResultsPage() {
         <p className="text-red-500">{error}</p>
       </Layout>
     );
-  // if (!data)
   if (loading)
     return (
       <Layout>
-        <p>Loading video data...</p>
+        <p>Loading video data...if an Error occur, try refreshing the page</p>
       </Layout>
     );
 
   return (
     <Layout>
       <Head>
-        <title>{data["Title"] ? `${data["Title"]}` : "Video Analysis"}</title>
+        <title>
+          {data && data["Title"] ? `${data["Title"]}` : "Video Analysis"}
+        </title>
       </Head>
       {/* YouTube Iframe at the top */}
       <div className="w-full aspect-video mb-8">
